@@ -6,11 +6,11 @@ public class FileStorageContext {
 
     private final String rootPath;
 
-    private int numberOfCreatedFilesInDeepestDirectoryPath = 0;
-    private final int maxNumberOfFilesInDirectory = 10;
+    private int currentLevel = 0;
+    private int currentPositionInLevel = 0;
     private final long maxDiscSpace;
     private long currentSizeOfAllFiles = 0;
-    private StringBuffer deepestDirectoryPath;
+    private StringBuffer currentDirectoryLevelPath;
     private final Map<String, FileAttribute> pathMap = new TreeMap<String, FileAttribute>();
     private final Deque<String> pathOfDeletedFiles = new ArrayDeque<String>();
     private final Map<Long, String> tempFiles = new TreeMap<Long, String>();
@@ -18,66 +18,94 @@ public class FileStorageContext {
     public FileStorageContext(String rootPath, long maxDiscSpace) {
         this.rootPath = rootPath;
         this.maxDiscSpace = maxDiscSpace;
-        deepestDirectoryPath = new StringBuffer(rootPath);
+        currentDirectoryLevelPath = new StringBuffer(rootPath);
     }
 
-    public String getPathForNewFile() throws FileStorageException {
+    public synchronized String getPathForNewFile() throws FileStorageException {
 
-        if(this.isDiscFull())
+        if (this.isDiscFull())
             throw new FileStorageException("No free disc space");
 
-        if(!pathOfDeletedFiles.isEmpty())
+        if (!pathOfDeletedFiles.isEmpty())
             return pathOfDeletedFiles.pop();
-        if(pathOfDeletedFiles.isEmpty() && !isDeeperDirectoryFull()) {
-            numberOfCreatedFilesInDeepestDirectoryPath++;
-            return deepestDirectoryPath.toString();
+        if (pathOfDeletedFiles.isEmpty() && !isCurrentLevelDirectoryFull()) {
+            currentPositionInLevel++;
+            return generateNewPath();
         }
-        if(pathOfDeletedFiles.isEmpty() && isDeeperDirectoryFull()){
-            return generateNewPathLevel();
+        if (pathOfDeletedFiles.isEmpty() && isCurrentLevelDirectoryFull()) {
+            generateNewPathLevel();
+
+            return generateNewPath();
         }
         return null;
     }
 
-    public FileAttribute getFileAttributes(String fileKey){
+    public synchronized FileAttribute getFileAttributes(String fileKey) {
         return this.pathMap.get(fileKey);
     }
 
-    private boolean isDeeperDirectoryFull() {
-        return numberOfCreatedFilesInDeepestDirectoryPath >= maxNumberOfFilesInDirectory;
+    private boolean isCurrentLevelDirectoryFull() {
+        return currentPositionInLevel >= (Math.pow(2, currentLevel) - 1);
     }
 
-    private String generateNewPathLevel() {
-        deepestDirectoryPath.append("1/");
-        this.numberOfCreatedFilesInDeepestDirectoryPath = 1;
-        return deepestDirectoryPath.toString();
+    private String generateNewPath() {
+        StringBuffer result = new StringBuffer(rootPath);
+        Deque<Double> pathBuilder = new ArrayDeque<Double>();
+        double tempCurrentPositionInLevel = currentPositionInLevel;
+        pathBuilder.add(tempCurrentPositionInLevel);
+        for (int i = 0; i < currentLevel - 1; i++) {
+            if (tempCurrentPositionInLevel == 0)
+                tempCurrentPositionInLevel = 1;
+            tempCurrentPositionInLevel = log(2, tempCurrentPositionInLevel);
+            pathBuilder.push(tempCurrentPositionInLevel);
+        }
+        while (!pathBuilder.isEmpty()) {
+            int indicator = (int) (pathBuilder.pop() % 2);
+            if (indicator == 0)
+                result.append("left/");
+            else
+                result.append("right/");
+        }
+        return result.toString();
     }
 
-    public void addNewFileAttribute(String key, FileAttribute fileAttribute){
+    private double log(double base, double value) {
+        return Math.log(value) / Math.log(base);
+    }
+
+    private void generateNewPathLevel() {
+        currentLevel++;
+        System.out.println("Level " + currentLevel);
+        System.out.println("MaxFiles " + (currentPositionInLevel + 1));
+        currentPositionInLevel = 0;
+    }
+
+    public synchronized void addNewFileAttribute(String key, FileAttribute fileAttribute) {
 
         this.pathMap.put(key, fileAttribute);
         this.currentSizeOfAllFiles += fileAttribute.getFileSize();
 
     }
 
-    public void deleteFileAttribute(String fileKey) {
+    public synchronized void deleteFileAttribute(String fileKey) {
 
         FileAttribute fileAttribute = pathMap.remove(fileKey);
         pathOfDeletedFiles.push(fileAttribute.getFilePath());
         this.currentSizeOfAllFiles -= fileAttribute.getFileSize();
 
-        if(tempFiles.containsValue(fileKey))
+        if (tempFiles.containsValue(fileKey))
             tempFiles.remove(fileKey);
 
     }
 
-    public void putLabelForTempFile (long lifeTimeOfFile, String fileKey) {
+    public void putLabelForTempFile(long lifeTimeOfFile, String fileKey) {
         tempFiles.put(lifeTimeOfFile, fileKey);
     }
 
-    public List<String> getKeysForTempFilesToDelete(long currentTime){
+    public synchronized List<String> getKeysForTempFilesToDelete(long currentTime) {
         List<String> result = new LinkedList<String>();
-        for(Long lifetimeOfFile: tempFiles.keySet()) {
-            if(!(lifetimeOfFile > currentTime))
+        for (Long lifetimeOfFile : tempFiles.keySet()) {
+            if (!(lifetimeOfFile > currentTime))
                 result.add(tempFiles.remove(lifetimeOfFile));
             else break;
         }
@@ -85,24 +113,24 @@ public class FileStorageContext {
     }
 
     private boolean isDiscFull() {
-        return currentSizeOfAllFiles > maxNumberOfFilesInDirectory;
+        return currentSizeOfAllFiles > maxDiscSpace;
     }
 
-    public long getFreeDiscSpaceInBites() {
+    public synchronized long getFreeDiscSpaceInBites() {
         return maxDiscSpace - currentSizeOfAllFiles;
     }
 
-    public List<String> getKeysOfOldestFiles(long sizeOfFiles) {
+    public synchronized List<String> getKeysOfOldestFiles(long sizeOfFiles) {
         Map<Long, String> dateKeyMap = new TreeMap<Long, String>();
-        for(String key: pathMap.keySet()) {
+        for (String key : pathMap.keySet()) {
             long currentFileDate = pathMap.get(key).getCreateDate();
             dateKeyMap.put(currentFileDate, key);
         }
 
         List<String> result = new LinkedList<String>();
         long commonSizeOfSelectedFiles = 0;
-        for(long currentFileDate: dateKeyMap.keySet()) {
-            if(commonSizeOfSelectedFiles > sizeOfFiles)
+        for (long currentFileDate : dateKeyMap.keySet()) {
+            if (commonSizeOfSelectedFiles > sizeOfFiles)
                 break;
             result.add(dateKeyMap.get(currentFileDate));
         }
@@ -110,11 +138,15 @@ public class FileStorageContext {
         return result;
     }
 
-    public long getMaxDiscSpace() {
+    public synchronized long getMaxDiscSpace() {
         return maxDiscSpace;
     }
 
-    public boolean isKeyAlreadyExist(String key) {
+    public synchronized boolean isKeyAlreadyExist(String key) {
         return pathMap.keySet().contains(key);
+    }
+
+    public synchronized boolean isTempFilesAvailable() {
+        return !tempFiles.isEmpty();
     }
 }
