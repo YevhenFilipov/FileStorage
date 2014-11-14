@@ -1,4 +1,4 @@
-package com.teamdev.file_service.TableImpl;
+package com.teamdev.fileservice.TableImpl;
 
 import java.util.*;
 
@@ -75,8 +75,6 @@ public class FileStorageContext {
 
     private void generateNewPathLevel() {
         currentLevel++;
-        System.out.println("Level " + currentLevel);
-        System.out.println("MaxFiles " + (currentPositionInLevel + 1));
         currentPositionInLevel = 0;
     }
 

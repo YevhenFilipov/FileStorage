@@ -1,4 +1,4 @@
-package com.teamdev.file_service.TableImpl;
+package com.teamdev.fileservice.TableImpl;
 
 public class FileAttribute {
 

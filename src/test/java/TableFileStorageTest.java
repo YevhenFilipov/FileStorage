@@ -1,6 +1,6 @@
-import com.teamdev.file_service.FileStorage;
-import com.teamdev.file_service.TableImpl.FileStorageException;
-import com.teamdev.file_service.TableImpl.TableFileStorage;
+import com.teamdev.fileservice.FileStorage;
+import com.teamdev.fileservice.TableImpl.FileStorageException;
+import com.teamdev.fileservice.TableImpl.FileStorageImpl;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -10,7 +10,7 @@ public class TableFileStorageTest {
 
     @Test
     public void SaveReadTest() throws FileStorageException, IOException {
-        FileStorage fileStorage = new TableFileStorage("target/testRoot/", 1024);
+        FileStorage fileStorage = new FileStorageImpl("target/testRoot/", 1024);
         File referenceFile = new File("src/test/resources/1.txt");
         for (Integer i = 0; i < 10; i++) {
             InputStream inputStream = new BufferedInputStream(new FileInputStream(referenceFile));

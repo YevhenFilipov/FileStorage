@@ -1,4 +1,4 @@
-package com.teamdev.file_service.TableImpl;
+package com.teamdev.fileservice.TableImpl;
 /**
  * This class creates specific structure of subdirectories to save more than 1 000 000 files.
  * Binary tree used like a prototype of this file structure.
@@ -6,7 +6,7 @@ package com.teamdev.file_service.TableImpl;
  * class uses special context, where all files attributes saves to a TreeMap.
  */
 
-import com.teamdev.file_service.FileStorage;
+import com.teamdev.fileservice.FileStorage;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -14,7 +14,7 @@ import java.io.*;
 import java.util.Date;
 import java.util.List;
 
-public class TableFileStorage implements FileStorage {
+public class FileStorageImpl implements FileStorage {
 
     private final FileStorageContext fileStorageContext;
 
@@ -29,7 +29,7 @@ public class TableFileStorage implements FileStorage {
      * @throws FileStorageException if root path expected
      */
 
-    public TableFileStorage(String rootPath, long maxDiscSpace) throws FileStorageException {
+    public FileStorageImpl(String rootPath, long maxDiscSpace) throws FileStorageException {
 
         if (rootPath == null || rootPath.isEmpty())
             throw new FileStorageException("Root path expected");
@@ -242,9 +242,9 @@ public class TableFileStorage implements FileStorage {
 
         private final Thread parentThread;
 
-        private final TableFileStorage tableFileStorage;
+        private final FileStorageImpl tableFileStorage;
 
-        protected TempFilesCleaner(TableFileStorage tableFileStorage) {
+        protected TempFilesCleaner(FileStorageImpl tableFileStorage) {
             this.tableFileStorage = tableFileStorage;
             parentThread = Thread.currentThread();
         }

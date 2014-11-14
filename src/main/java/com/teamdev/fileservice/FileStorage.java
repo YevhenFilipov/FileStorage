@@ -1,6 +1,6 @@
-package com.teamdev.file_service;
+package com.teamdev.fileservice;
 
-import com.teamdev.file_service.TableImpl.FileStorageException;
+import com.teamdev.fileservice.TableImpl.FileStorageException;
 
 import java.io.InputStream;
 
