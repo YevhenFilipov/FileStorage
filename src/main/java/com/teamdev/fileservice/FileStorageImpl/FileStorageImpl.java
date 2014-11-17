@@ -30,7 +30,7 @@ public class FileStorageImpl implements FileStorage {
     private final String rootPath;
     private final long maxDiscSpace;
     private long totalSizeOfFiles;
-    private final NavigableMap<Long, String> tempFiles = new TreeMap<Long, String>();
+    private NavigableMap<Long, String> tempFiles;
 
     /**
      * Constructor creates new instance of class,
@@ -44,6 +44,25 @@ public class FileStorageImpl implements FileStorage {
     public FileStorageImpl(String rootPath, long maxDiscSpace) throws FileStorageException {
         checkRootPath(rootPath);
         checkMaxDiscSpace(rootPath, maxDiscSpace);
+
+
+        File file = new File(rootPath + "/FileStorage.prop");
+        final Path userStoragePath = Paths.get(rootPath + "/userData");
+        if (file.exists()) {
+            this.tempFiles = this.loadTempFilesFromProperty(file);
+            this.totalSizeOfFiles = this.getTotalSizeOfFiles(userStoragePath);
+        } else {
+            this.totalSizeOfFiles = 0;
+            this.tempFiles = new TreeMap<Long, String>();
+        }
+        try {
+            final boolean userStorageEmpty = Files.size(userStoragePath) == 0;
+            if (!file.exists() && !userStorageEmpty)
+                logger.warn("User storage is not empty!");
+        } catch (IOException e) {
+            throw new ReadWriteFileStorageException("Can't get access to the storage", rootPath, e);
+        }
+
         this.rootPath = rootPath;
         this.maxDiscSpace = maxDiscSpace;
         Timer tempFilesDeleterTimer = new Timer(true);
@@ -162,12 +181,17 @@ public class FileStorageImpl implements FileStorage {
      */
 
     @Override
-    public void saveFile(String key, long fileLifeTime, InputStream inputStream) throws FileStorageException {
+    public void saveFile(String key, InputStream inputStream, long fileLifeTime) throws FileStorageException {
 
         this.saveFile(key, inputStream);
         final Date currentTime = new Date();
         final long expirationTime = currentTime.getTime() + fileLifeTime;
         this.addNewTempFile(expirationTime, key);
+        final File sourcePropertiesFile = new File(rootPath + "/FileStorage.prop");
+        Properties properties = this.getLastSavedProperties(sourcePropertiesFile);
+        properties.setProperty(((Long) expirationTime).toString(), key);
+        this.saveProperties(properties, sourcePropertiesFile);
+
     }
 
     @Override
@@ -205,7 +229,14 @@ public class FileStorageImpl implements FileStorage {
         } catch (IOException IOError) {
             throw new ReadWriteFileStorageException("Can't get access to this file", key, IOError);
         }
-
+        for (Long expirationTime : this.tempFiles.keySet()) {
+            if (this.tempFiles.get(expirationTime).equals(key)) {
+                File propertiesFile = new File(rootPath + "/FileStorage.prop");
+                Properties properties = this.getLastSavedProperties(propertiesFile);
+                properties.remove(expirationTime.toString());
+                this.tempFiles.remove(expirationTime);
+            }
+        }
     }
 
     @Override
@@ -226,7 +257,7 @@ public class FileStorageImpl implements FileStorage {
         if (discSpaceInBytes > this.maxDiscSpace)
             throw new IllegalArgumentFileStorageException("Target free disc space is lager then max disc space", ((Long) discSpaceInBytes).toString());
 
-        final Path path = Paths.get(rootPath + "userData");
+        final Path path = Paths.get(rootPath + "/userData");
         final OldestFilesFinderVisitor oldestFilesFinderVisitor = new OldestFilesFinderVisitor();
         try {
             Files.walkFileTree(path, oldestFilesFinderVisitor);
@@ -249,9 +280,9 @@ public class FileStorageImpl implements FileStorage {
     public void purge(float discSpaceInPercents) throws FileStorageException {
 
         if (discSpaceInPercents <= 0 || discSpaceInPercents > 100)
-            throw new IllegalArgumentFileStorageException("Incorrect target value of target disc space", ((Float)discSpaceInPercents).toString());
+            throw new IllegalArgumentFileStorageException("Incorrect target value of target disc space", ((Float) discSpaceInPercents).toString());
 
-        long targetDiscSpace = (long)discSpaceInPercents * this.maxDiscSpace / 100;
+        long targetDiscSpace = (long) discSpaceInPercents * this.maxDiscSpace / 100;
         this.purge(targetDiscSpace);
     }
 
@@ -341,4 +372,46 @@ public class FileStorageImpl implements FileStorage {
             expirationTime++;
         this.tempFiles.put(expirationTime, key);
     }
+
+    private NavigableMap<Long, String> loadTempFilesFromProperty(File sourceFile) throws ReadWriteFileStorageException {
+        final Properties properties = getLastSavedProperties(sourceFile);
+        NavigableMap<Long, String> resultMap = new TreeMap<Long, String>();
+        for (String expirationTimeString : properties.stringPropertyNames()) {
+            Long expirationTimeLong = Long.parseLong(expirationTimeString);
+            resultMap.put(expirationTimeLong, properties.getProperty(expirationTimeString));
+        }
+        return resultMap;
+    }
+
+    private Properties getLastSavedProperties(File sourcePropertiesFile) throws ReadWriteFileStorageException {
+        final Properties properties = new Properties();
+        try {
+            properties.load(new FileReader(sourcePropertiesFile));
+        } catch (IOException e) {
+            throw new ReadWriteFileStorageException("Can't load properties from file", "FileStorage.prop", e);
+        }
+        return properties;
+    }
+
+    private void saveProperties(Properties properties, File propertiesFile) throws ReadWriteFileStorageException {
+        try {
+            properties.store(new FileWriter(propertiesFile), "FileStorage, map of temporary files. ExpirationTime: Key");
+        } catch (IOException e) {
+            throw new ReadWriteFileStorageException("Can't get acess to properties file", propertiesFile.getName(), e);
+        }
+    }
+
+
+    private long getTotalSizeOfFiles(Path userStoragePath) throws ReadWriteFileStorageException {
+
+        final TotalSizeOfFilesCalculatorVisitor totalSizeOfFilesCalculatorVisitor = new TotalSizeOfFilesCalculatorVisitor();
+        try {
+            Files.walkFileTree(userStoragePath, totalSizeOfFilesCalculatorVisitor);
+        } catch (IOException e) {
+            throw new ReadWriteFileStorageException("Can't get access to some stored file", totalSizeOfFilesCalculatorVisitor.getLastAccessedFileKey(), e);
+        }
+
+        return totalSizeOfFilesCalculatorVisitor.getTotalSizeOfFiles();
+    }
+
 }

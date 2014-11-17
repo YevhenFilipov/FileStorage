@@ -8,7 +8,7 @@ public interface FileStorage {
 
     void saveFile(String key, InputStream inputStream) throws FileStorageException;
 
-    void saveFile(String key, long fileLifeTime, InputStream inputStream) throws FileStorageException;
+    void saveFile(String key, InputStream inputStream, long fileLifeTime) throws FileStorageException;
 
     InputStream readFile(String key) throws FileStorageException;
 
