@@ -1,6 +1,6 @@
 import com.teamdev.fileservice.FileStorage;
-import com.teamdev.fileservice.TableImpl.FileStorageException;
-import com.teamdev.fileservice.TableImpl.FileStorageImpl;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageImpl;
 import org.junit.Assert;
 import org.junit.Test;
 

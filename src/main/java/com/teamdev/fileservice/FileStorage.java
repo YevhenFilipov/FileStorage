@@ -1,6 +1,6 @@
 package com.teamdev.fileservice;
 
-import com.teamdev.fileservice.TableImpl.FileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
 
 import java.io.InputStream;
 
@@ -16,10 +16,10 @@ public interface FileStorage {
 
     long freeSpaceInBytes();
 
-    double freeSpaceInPercents();
+    float freeSpaceInPercents();
 
     void purge(long discSpaceInBytes) throws FileStorageException;
 
-    void purge(double discSpaceInPercents) throws FileStorageException;
+    void purge(float discSpaceInPercents) throws FileStorageException;
 
 }
