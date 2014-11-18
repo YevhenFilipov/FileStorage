@@ -10,7 +10,7 @@ public class TableFileStorageTest {
 
     @Test
     public void SaveReadTest() throws FileStorageException, IOException {
-        FileStorage fileStorage = new FileStorageImpl("target/testRoot/", 1024);
+        FileStorage fileStorage = new FileStorageImpl("target/testRoot/", 1024l);
         File referenceFile = new File("src/test/resources/1.txt");
         for (Integer i = 0; i < 10; i++) {
             InputStream inputStream = new BufferedInputStream(new FileInputStream(referenceFile));
@@ -32,7 +32,6 @@ public class TableFileStorageTest {
         outputStream.close();
 
         Assert.assertTrue("Write and read file test", readFile.length() == referenceFile.length());
-        File testDirs = new File("target/testRoot/");
         readFile.delete();
 
     }

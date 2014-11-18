@@ -29,6 +29,8 @@ public class FileStorageImpl implements FileStorage {
 
     private final String rootPath;
     private final long maxDiscSpace;
+    private final String propertiesFilePath;
+    private final String userDataPath;
     private long totalSizeOfFiles;
     private NavigableMap<Long, String> tempFiles;
 
@@ -44,25 +46,18 @@ public class FileStorageImpl implements FileStorage {
     public FileStorageImpl(String rootPath, long maxDiscSpace) throws FileStorageException {
         checkRootPath(rootPath);
         checkMaxDiscSpace(rootPath, maxDiscSpace);
+        propertiesFilePath = rootPath + "/FileStorage.prop";
+        File propertiesFile = new File(propertiesFilePath);
+        userDataPath = rootPath + "/userData";
+        final Path userStoragePath = Paths.get(userDataPath);
 
-
-        File file = new File(rootPath + "/FileStorage.prop");
-        final Path userStoragePath = Paths.get(rootPath + "/userData");
-        if (file.exists()) {
-            this.tempFiles = this.loadTempFilesFromProperty(file);
-            this.totalSizeOfFiles = this.getTotalSizeOfFiles(userStoragePath);
+        if (propertiesFile.exists()) {
+            this.tempFiles = this.loadTempFilesFromProperty(propertiesFile);
         } else {
-            this.totalSizeOfFiles = 0;
             this.tempFiles = new TreeMap<Long, String>();
         }
-        try {
-            final boolean userStorageEmpty = Files.size(userStoragePath) == 0;
-            if (!file.exists() && !userStorageEmpty)
-                logger.warn("User storage is not empty!");
-        } catch (IOException e) {
-            throw new ReadWriteFileStorageException("Can't get access to the storage", rootPath, e);
-        }
 
+        this.totalSizeOfFiles = this.getTotalSizeOfFiles(userStoragePath);
         this.rootPath = rootPath;
         this.maxDiscSpace = maxDiscSpace;
         Timer tempFilesDeleterTimer = new Timer(true);
@@ -187,10 +182,10 @@ public class FileStorageImpl implements FileStorage {
         final Date currentTime = new Date();
         final long expirationTime = currentTime.getTime() + fileLifeTime;
         this.addNewTempFile(expirationTime, key);
-        final File sourcePropertiesFile = new File(rootPath + "/FileStorage.prop");
+        final File sourcePropertiesFile = new File(propertiesFilePath);
         Properties properties = this.getLastSavedProperties(sourcePropertiesFile);
         properties.setProperty(((Long) expirationTime).toString(), key);
-        this.saveProperties(properties, sourcePropertiesFile);
+        this.saveProperties(properties);
 
     }
 
@@ -229,14 +224,6 @@ public class FileStorageImpl implements FileStorage {
         } catch (IOException IOError) {
             throw new ReadWriteFileStorageException("Can't get access to this file", key, IOError);
         }
-        for (Long expirationTime : this.tempFiles.keySet()) {
-            if (this.tempFiles.get(expirationTime).equals(key)) {
-                File propertiesFile = new File(rootPath + "/FileStorage.prop");
-                Properties properties = this.getLastSavedProperties(propertiesFile);
-                properties.remove(expirationTime.toString());
-                this.tempFiles.remove(expirationTime);
-            }
-        }
     }
 
     @Override
@@ -257,7 +244,7 @@ public class FileStorageImpl implements FileStorage {
         if (discSpaceInBytes > this.maxDiscSpace)
             throw new IllegalArgumentFileStorageException("Target free disc space is lager then max disc space", ((Long) discSpaceInBytes).toString());
 
-        final Path path = Paths.get(rootPath + "/userData");
+        final Path path = Paths.get(userDataPath);
         final OldestFilesFinderVisitor oldestFilesFinderVisitor = new OldestFilesFinderVisitor();
         try {
             Files.walkFileTree(path, oldestFilesFinderVisitor);
@@ -309,10 +296,19 @@ public class FileStorageImpl implements FileStorage {
         public void run() {
             logger.info("TempFilesDeleter started");
 
+            if (this.fileStorage.tempFiles.isEmpty())
+                return;
+
             Date currentTime = new Date();
             while (this.fileStorage.tempFiles.firstKey() <= currentTime.getTime())
                 try {
-                    this.fileStorage.deleteFile(this.fileStorage.tempFiles.remove(this.fileStorage.tempFiles.firstKey()));
+                    final Long expirationTimeOfFile = this.fileStorage.tempFiles.firstKey();
+                    final String keyOfFileToDelete = this.fileStorage.tempFiles.remove(expirationTimeOfFile);
+                    File fileToDelete = new File(this.fileStorage.generatePathPresentation(keyOfFileToDelete) + "/" + keyOfFileToDelete);
+                    if (fileToDelete.exists()) {
+                        this.fileStorage.deleteFile(keyOfFileToDelete);
+                    }
+                    this.fileStorage.tempFiles.remove(expirationTimeOfFile);
                 } catch (FileStorageException e) {
                     e.printStackTrace();
                 }
@@ -343,7 +339,7 @@ public class FileStorageImpl implements FileStorage {
     }
 
     private void checkMaxDiscSpace(String rootPath, long maxDiscSpace) throws IllegalArgumentFileStorageException {
-        if (maxDiscSpace >= 0)
+        if (maxDiscSpace <= 0)
             throw new IllegalArgumentFileStorageException("Unnecessary value of maxDiscSpace", ((Long) maxDiscSpace).toString());
 
         File file = new File(rootPath);
@@ -367,10 +363,20 @@ public class FileStorageImpl implements FileStorage {
         return this.rootPath + "/" + "userData" + "/" + fistPartHash + "/" + secondPartHash;
     }
 
-    private void addNewTempFile(long expirationTime, String key) {
+    private void addNewTempFile(Long expirationTime, String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
+        Properties properties = new Properties();
+        for (Long expirationTimeOfCurrentFile : this.tempFiles.keySet()) {
+            if (this.tempFiles.get(expirationTimeOfCurrentFile).equals(key))
+                this.tempFiles.remove(expirationTimeOfCurrentFile);
+            else
+                properties.setProperty(expirationTimeOfCurrentFile.toString(), this.tempFiles.get(expirationTimeOfCurrentFile));
+        }
         while (this.tempFiles.containsKey(expirationTime))
             expirationTime++;
+
         this.tempFiles.put(expirationTime, key);
+        properties.setProperty(expirationTime.toString(), key);
+        this.saveProperties(properties);
     }
 
     private NavigableMap<Long, String> loadTempFilesFromProperty(File sourceFile) throws ReadWriteFileStorageException {
@@ -388,16 +394,17 @@ public class FileStorageImpl implements FileStorage {
         try {
             properties.load(new FileReader(sourcePropertiesFile));
         } catch (IOException e) {
-            throw new ReadWriteFileStorageException("Can't load properties from file", "FileStorage.prop", e);
+            throw new ReadWriteFileStorageException("Can't load properties from file", propertiesFilePath, e);
         }
         return properties;
     }
 
-    private void saveProperties(Properties properties, File propertiesFile) throws ReadWriteFileStorageException {
+    private void saveProperties(Properties properties) throws ReadWriteFileStorageException {
+        File propertiesFile = new File(propertiesFilePath);
         try {
             properties.store(new FileWriter(propertiesFile), "FileStorage, map of temporary files. ExpirationTime: Key");
         } catch (IOException e) {
-            throw new ReadWriteFileStorageException("Can't get acess to properties file", propertiesFile.getName(), e);
+            throw new ReadWriteFileStorageException("Can't get access to properties file", propertiesFile.getName(), e);
         }
     }
 
