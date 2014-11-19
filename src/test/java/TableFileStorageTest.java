@@ -5,6 +5,8 @@ import org.junit.Assert;
 import org.junit.Test;
 
 import java.io.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
 
 public class TableFileStorageTest {
 
@@ -33,6 +35,21 @@ public class TableFileStorageTest {
 
         Assert.assertTrue("Write and read file test", readFile.length() == referenceFile.length());
         readFile.delete();
+        deleteTestFiles();
+    }
+
+    private void deleteTestFiles() throws IOException {
+
+        class DeleteTestFilesVisitor extends SimpleFileVisitor<Path> {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.deleteIfExists(file);
+                return FileVisitResult.CONTINUE;
+            }
+        }
+
+        Path testFilesPath = Paths.get("target/testRoot");
+        Files.walkFileTree(testFilesPath, new DeleteTestFilesVisitor());
 
     }
 }

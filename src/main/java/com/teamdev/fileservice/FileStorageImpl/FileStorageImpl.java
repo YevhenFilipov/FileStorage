@@ -1,9 +1,8 @@
 package com.teamdev.fileservice.FileStorageImpl;
 /**
- * This class creates specific structure of subdirectories to save more than 1 000 000 files.
- * Binary tree used like a prototype of this file structure.
- * To make access to the files faster,
- * class uses special context, where all files attributes saves to a TreeMap.
+ * This class creates specific structure of subdirectories to save 2^30 files.
+ * File structure building bases on hash code of the specific key of each file.
+ * Class have tread-safe public methods
  */
 
 import com.teamdev.fileservice.FileStorage;
@@ -25,9 +24,8 @@ import java.util.*;
 
 public class FileStorageImpl implements FileStorage {
 
-    private final Logger logger = Logger.getLogger(FileStorageImpl.class.getName());
+    private final Logger logger = Logger.getLogger(this.getClass().getName());
 
-    private final String rootPath;
     private final long maxDiscSpace;
     private final String propertiesFilePath;
     private final String userDataPath;
@@ -36,14 +34,20 @@ public class FileStorageImpl implements FileStorage {
 
     /**
      * Constructor creates new instance of class,
-     * with special attributes. Attributes points to storage root path and max size of this storage
+     * with special attributes. Attributes points to storage root path and max size of this storage.
+     * if rootPath already have some files, it'll be reduce free space of this storage.
+     * if rootPath already have some FileStorage files and configuration file, last configuration accepts automatically
      *
-     * @param rootPath     Path, where storage will be located.
-     * @param maxDiscSpace max disc space in bites, which storage can be use.
-     * @throws FileStorageException if root path expected
+     * @param rootPath     path, where storage will be located.
+     *                     Directory, which associated with this rootPath must be empty before the first class initialisation
+     * @param maxDiscSpace max disc space in bites, which storage can be use. Value of maxDiscSpace must be  > 0
+     * @throws NullArgumentFileStorageException if root path expected, or {@code null}
+     * @throws IllegalArgumentFileStorageException if root path protected from read, or rootPath points to a file, or if maxDiscSpace <= 0
+     * @throws ReadWriteFileStorageException if root path inaccessible.
+     *
      */
 
-    public FileStorageImpl(String rootPath, long maxDiscSpace) throws FileStorageException {
+    public FileStorageImpl(String rootPath, long maxDiscSpace) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException, ReadWriteFileStorageException {
         checkRootPath(rootPath);
         checkMaxDiscSpace(rootPath, maxDiscSpace);
         propertiesFilePath = rootPath + "/FileStorage.prop";
@@ -57,8 +61,11 @@ public class FileStorageImpl implements FileStorage {
             this.tempFiles = new TreeMap<Long, String>();
         }
 
-        this.totalSizeOfFiles = this.getTotalSizeOfFiles(userStoragePath);
-        this.rootPath = rootPath;
+        if (Files.exists(userStoragePath))
+            this.totalSizeOfFiles = this.getTotalSizeOfFiles(userStoragePath);
+        else
+            this.totalSizeOfFiles = 0;
+
         this.maxDiscSpace = maxDiscSpace;
         Timer tempFilesDeleterTimer = new Timer(true);
         final TempFilesDeleter tempFilesDeleter = new TempFilesDeleter(this);
@@ -69,28 +76,22 @@ public class FileStorageImpl implements FileStorage {
     /**
      * Saves the new file with specific key to the storage
      *
-     * @param key         Unique key of saved file,
-     *                    it can not contain symbols:
+     * @param key         Unique key of file.
+     *                    Key mustn't contains symbols:
      *                    '\'
      *                    '/'
-     *                    ':'
-     *                    '*'
-     *                    '?'
-     *                    '"'
-     *                    '<'
-     *                    '>'
-     *                    '|'
-     * @param inputStream input stream of the new file
-     * @throws FileStorageException if key is invalid, or already exist.
-     *                              or if input stream is null
-     *                              of if there is no such disc space
-     *                              or if there is a IOException
+
+     * @param inputStream input stream for this file
+     * @throws NullArgumentFileStorageException if inputStream or key is {@code null}
+     * @throws IllegalArgumentFileStorageException if key have invalid format
+     * @throws ReadWriteFileStorageException if root path is read-protected
+     *
      */
 
     @Override
-    public void saveFile(String key, InputStream inputStream) throws FileStorageException {
+    public void saveFile(String key, InputStream inputStream) throws NullArgumentFileStorageException, IllegalArgumentFileStorageException, ReadWriteFileStorageException {
         if (inputStream == null)
-            throw new NullArgumentFileStorageException("Input stream Expected");
+            throw new NullArgumentFileStorageException("Input stream expected");
 
         final String filePath = generatePathPresentation(key);
         try {
@@ -108,7 +109,7 @@ public class FileStorageImpl implements FileStorage {
     }
 
 
-    private void saveFileToPath(InputStream inputStream, File fileToSave, String key) throws FileStorageException {
+    private void saveFileToPath(InputStream inputStream, File fileToSave, String key) throws ReadWriteFileStorageException, IllegalArgumentFileStorageException {
 
         checkAndCreateNewFile(fileToSave, key);
         try {
@@ -156,27 +157,22 @@ public class FileStorageImpl implements FileStorage {
     /**
      * Saves the new file with specific key to the storage
      *
-     * @param key          Unique key of saved file,
-     *                     it can not contain symbols:
-     *                     '\'
-     *                     '/'
-     *                     ':'
-     *                     '*'
-     *                     '?'
-     *                     '"'
-     *                     '<'
-     *                     '>'
-     *                     '|'
-     * @param inputStream  input stream of the new file
-     * @param fileLifeTime lifetime period in milliseconds, after which, file will be deleted
-     * @throws FileStorageException if key is invalid, or already exist.
-     *                              or if input stream is null
-     *                              of if there is no such disc space
-     *                              or if there is a IOException
+     * @param key         Unique key of file.
+     *                    Key mustn't contains symbols:
+     *                    '\'
+     *                    '/'
+
+     * @param inputStream input stream for this file
+     *
+     * @param fileLifeTime expiration time of the file. After this time it'll be deletes automatically
+     * @throws NullArgumentFileStorageException if inputStream or key is {@code null}
+     * @throws IllegalArgumentFileStorageException if key have invalid format
+     * @throws ReadWriteFileStorageException if root path is read-protected
+     *
      */
 
     @Override
-    public void saveFile(String key, InputStream inputStream, long fileLifeTime) throws FileStorageException {
+    public void saveFile(String key, InputStream inputStream, long fileLifeTime) throws ReadWriteFileStorageException, IllegalArgumentFileStorageException, NullArgumentFileStorageException {
 
         this.saveFile(key, inputStream);
         final Date currentTime = new Date();
@@ -190,7 +186,7 @@ public class FileStorageImpl implements FileStorage {
     }
 
     @Override
-    public InputStream readFile(String key) throws FileStorageException {
+    public InputStream readFile(String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException, NullArgumentFileStorageException {
 
         final String filePath = this.generatePathPresentation(key);
         final File file;
@@ -210,7 +206,7 @@ public class FileStorageImpl implements FileStorage {
     }
 
     @Override
-    public void deleteFile(String key) throws FileStorageException {
+    public void deleteFile(String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException, NullArgumentFileStorageException {
         try {
             final String filePath = this.generatePathPresentation(key);
             final Path path = Paths.get(filePath + key);
@@ -237,7 +233,7 @@ public class FileStorageImpl implements FileStorage {
     }
 
     @Override
-    public void purge(long discSpaceInBytes) throws FileStorageException {
+    public void purge(long discSpaceInBytes) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException, UnnecessaryEventFileStorageException, NullArgumentFileStorageException {
 
         if (discSpaceInBytes <= 0)
             throw new IllegalArgumentFileStorageException("Incorrect value of target disc space", ((Long) discSpaceInBytes).toString());
@@ -264,7 +260,7 @@ public class FileStorageImpl implements FileStorage {
     }
 
     @Override
-    public void purge(float discSpaceInPercents) throws FileStorageException {
+    public void purge(float discSpaceInPercents) throws ReadWriteFileStorageException, IllegalArgumentFileStorageException, UnnecessaryEventFileStorageException, NullArgumentFileStorageException {
 
         if (discSpaceInPercents <= 0 || discSpaceInPercents > 100)
             throw new IllegalArgumentFileStorageException("Incorrect target value of target disc space", ((Float) discSpaceInPercents).toString());
@@ -274,7 +270,11 @@ public class FileStorageImpl implements FileStorage {
     }
 
 
-    private void checkKey(String key) throws IllegalArgumentFileStorageException {
+    private void checkKey(String key) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException {
+
+        if (key == null) {
+            throw new NullArgumentFileStorageException("Key is null");
+        }
         for (char currentChar : key.toCharArray()) {
             switch (currentChar) {
                 case 0x5c:
@@ -317,13 +317,13 @@ public class FileStorageImpl implements FileStorage {
         }
     }
 
-    private void checkRootPath(String rootPath) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException {
+    private void checkRootPath(String rootPath) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException, ReadWriteFileStorageException {
         if (rootPath == null || rootPath.isEmpty())
             throw new NullArgumentFileStorageException("Root path expected");
         checkAndCreateFolderPath(rootPath);
     }
 
-    private void checkAndCreateFolderPath(String path) throws IllegalArgumentFileStorageException {
+    private void checkAndCreateFolderPath(String path) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
         File file = new File(path);
 
         if (!file.exists()) {
@@ -332,13 +332,13 @@ public class FileStorageImpl implements FileStorage {
                 if (!directoryCreatesSuccessful)
                     logger.warn("Another FileStorage thread tries to work with the same path: " + path);
             } catch (SecurityException e) {
-                throw new IllegalArgumentFileStorageException("Invalid path", path);
+                throw new ReadWriteFileStorageException("This path read-protected", path, e);
             }
         } else if (file.isFile())
             throw new IllegalArgumentFileStorageException("Specified root path points to a file", path);
     }
 
-    private void checkMaxDiscSpace(String rootPath, long maxDiscSpace) throws IllegalArgumentFileStorageException {
+    private void checkMaxDiscSpace(String rootPath, long maxDiscSpace) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
         if (maxDiscSpace <= 0)
             throw new IllegalArgumentFileStorageException("Unnecessary value of maxDiscSpace", ((Long) maxDiscSpace).toString());
 
@@ -349,18 +349,18 @@ public class FileStorageImpl implements FileStorage {
                 logger.error("FileStorage tries to receive " + maxDiscSpace +
                         " bites on disc, but only " + freeSpace + " bites are available!");
         } catch (SecurityException e) {
-            throw new IllegalArgumentFileStorageException("Root path is not accessible", rootPath);
+            throw new ReadWriteFileStorageException("Root path is not accessible", rootPath, e);
         }
     }
 
-    private String generatePathPresentation(String key) throws IllegalArgumentFileStorageException {
+    private String generatePathPresentation(String key) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException {
 
         this.checkKey(key);
         int cutHash = key.hashCode() % (int) Math.pow(2, 28);
         int fistPartHash = cutHash / (int) Math.pow(2, 14);
         int secondPartHash = cutHash % (int) Math.pow(2, 14);
 
-        return this.rootPath + "/" + "userData" + "/" + fistPartHash + "/" + secondPartHash;
+        return this.userDataPath + "/" + fistPartHash + "/" + secondPartHash;
     }
 
     private void addNewTempFile(Long expirationTime, String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
@@ -407,7 +407,6 @@ public class FileStorageImpl implements FileStorage {
             throw new ReadWriteFileStorageException("Can't get access to properties file", propertiesFile.getName(), e);
         }
     }
-
 
     private long getTotalSizeOfFiles(Path userStoragePath) throws ReadWriteFileStorageException {
 
