@@ -6,6 +6,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -22,9 +23,10 @@ public class OldestFilesFinderVisitor extends SimpleFileVisitor<Path> {
     public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
         final String key = path.getFileName().toString();
         this.lastAccessedFileKey = key;
-        final Long lastModifiedTimeOfFile = (Long) Files.getAttribute(path, "lastModifiedTime");
+        FileTime fileTime = (FileTime) Files.getAttribute(path, "lastModifiedTime");
+        final Long lastModifiedTimeOfFile = fileTime.toMillis();
         this.oldestFiles.put(lastModifiedTimeOfFile, key);
-            return FileVisitResult.CONTINUE;
+        return FileVisitResult.CONTINUE;
     }
 
     public NavigableMap<Long, String> getOldestFiles() {

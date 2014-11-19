@@ -2,7 +2,7 @@ package com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions;
 
 import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
 
-public class ReadWriteFileStorageException extends FileStorageException{
+public class ReadWriteFileStorageException extends FileStorageException {
 
     Throwable cause;
     String fileKey;

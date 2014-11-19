@@ -6,8 +6,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.SimpleFileVisitor;
 import java.nio.file.attribute.BasicFileAttributes;
-import java.util.NavigableMap;
-import java.util.TreeMap;
 
 public class TotalSizeOfFilesCalculatorVisitor extends SimpleFileVisitor<Path> {
 
@@ -16,11 +14,10 @@ public class TotalSizeOfFilesCalculatorVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-        final String key = path.getFileName().toString();
-        this.lastAccessedFileKey = key;
+        this.lastAccessedFileKey = path.getFileName().toString();
         final long fileSize = (Long) Files.getAttribute(path, "size");
         this.totalSizeOfFiles += fileSize;
-            return FileVisitResult.CONTINUE;
+        return FileVisitResult.CONTINUE;
     }
 
     public long getTotalSizeOfFiles() {

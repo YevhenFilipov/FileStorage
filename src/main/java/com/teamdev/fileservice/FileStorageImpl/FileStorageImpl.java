@@ -24,12 +24,13 @@ import java.util.*;
 
 public class FileStorageImpl implements FileStorage {
 
-    private final Logger logger = Logger.getLogger(this.getClass().getName());
+    private final static Logger logger = Logger.getLogger(FileStorageImpl.class);
+    private final static Object monitor = new Object();
 
     private final long maxDiscSpace;
     private final String propertiesFilePath;
     private final String userDataPath;
-    private long totalSizeOfFiles;
+    private volatile long totalSizeOfFiles;
     private NavigableMap<Long, String> tempFiles;
 
     /**
@@ -41,10 +42,9 @@ public class FileStorageImpl implements FileStorage {
      * @param rootPath     path, where storage will be located.
      *                     Directory, which associated with this rootPath must be empty before the first class initialisation
      * @param maxDiscSpace max disc space in bites, which storage can be use. Value of maxDiscSpace must be  > 0
-     * @throws NullArgumentFileStorageException if root path expected, or {@code null}
+     * @throws NullArgumentFileStorageException    if root path expected, or {@code null}
      * @throws IllegalArgumentFileStorageException if root path protected from read, or rootPath points to a file, or if maxDiscSpace <= 0
-     * @throws ReadWriteFileStorageException if root path inaccessible.
-     *
+     * @throws ReadWriteFileStorageException       if root path inaccessible.
      */
 
     public FileStorageImpl(String rootPath, long maxDiscSpace) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException, ReadWriteFileStorageException {
@@ -55,10 +55,12 @@ public class FileStorageImpl implements FileStorage {
         userDataPath = rootPath + "/userData";
         final Path userStoragePath = Paths.get(userDataPath);
 
-        if (propertiesFile.exists()) {
-            this.tempFiles = this.loadTempFilesFromProperty(propertiesFile);
-        } else {
-            this.tempFiles = new TreeMap<Long, String>();
+        synchronized (monitor) {
+            if (propertiesFile.exists()) {
+                this.tempFiles = this.loadTempFilesFromProperty(propertiesFile);
+            } else {
+                this.tempFiles = new TreeMap<Long, String>();
+            }
         }
 
         if (Files.exists(userStoragePath))
@@ -69,7 +71,7 @@ public class FileStorageImpl implements FileStorage {
         this.maxDiscSpace = maxDiscSpace;
         Timer tempFilesDeleterTimer = new Timer(true);
         final TempFilesDeleter tempFilesDeleter = new TempFilesDeleter(this);
-        tempFilesDeleterTimer.schedule(tempFilesDeleter, new Date(), 1 * 60 * 1000);
+        tempFilesDeleterTimer.schedule(tempFilesDeleter, new Date(), 1 * 1000);
 
     }
 
@@ -80,12 +82,10 @@ public class FileStorageImpl implements FileStorage {
      *                    Key mustn't contains symbols:
      *                    '\'
      *                    '/'
-
      * @param inputStream input stream for this file
-     * @throws NullArgumentFileStorageException if inputStream or key is {@code null}
+     * @throws NullArgumentFileStorageException    if inputStream or key is {@code null}
      * @throws IllegalArgumentFileStorageException if key have invalid format
-     * @throws ReadWriteFileStorageException if root path is read-protected
-     *
+     * @throws ReadWriteFileStorageException       if root path is read-protected
      */
 
     @Override
@@ -107,7 +107,6 @@ public class FileStorageImpl implements FileStorage {
 
         this.totalSizeOfFiles += fileToSave.length();
     }
-
 
     private void saveFileToPath(InputStream inputStream, File fileToSave, String key) throws ReadWriteFileStorageException, IllegalArgumentFileStorageException {
 
@@ -155,20 +154,17 @@ public class FileStorageImpl implements FileStorage {
     }
 
     /**
-     * Saves the new file with specific key to the storage
+     * Saves the new temporary file with specific key to the storage. This file will be deletes automatically after fileLifeTime.
      *
-     * @param key         Unique key of file.
-     *                    Key mustn't contains symbols:
-     *                    '\'
-     *                    '/'
-
-     * @param inputStream input stream for this file
-     *
+     * @param key          Unique key of file.
+     *                     Key mustn't contains symbols:
+     *                     '\'
+     *                     '/'
+     * @param inputStream  input stream for this file
      * @param fileLifeTime expiration time of the file. After this time it'll be deletes automatically
-     * @throws NullArgumentFileStorageException if inputStream or key is {@code null}
+     * @throws NullArgumentFileStorageException    if inputStream or key is {@code null}
      * @throws IllegalArgumentFileStorageException if key have invalid format
-     * @throws ReadWriteFileStorageException if root path is read-protected
-     *
+     * @throws ReadWriteFileStorageException       if root path is read-protected
      */
 
     @Override
@@ -185,6 +181,16 @@ public class FileStorageImpl implements FileStorage {
 
     }
 
+    /**
+     * Reads file from the storage
+     *
+     * @param key specified file key
+     * @return Input Stream
+     * @throws IllegalArgumentFileStorageException if key is invalid.
+     * @throws ReadWriteFileStorageException       if file doesn't exist, or file protected from reading.
+     * @throws NullArgumentFileStorageException    if key is {@code null}
+     */
+
     @Override
     public InputStream readFile(String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException, NullArgumentFileStorageException {
 
@@ -200,16 +206,25 @@ public class FileStorageImpl implements FileStorage {
         } catch (FileNotFoundException fileNotFoundError) {
             throw new ReadWriteFileStorageException("Can't find the file", key, fileNotFoundError);
         } catch (SecurityException securityError) {
-            throw new ReadWriteFileStorageException("File is protected from reading", key, securityError);
+            throw new ReadWriteFileStorageException("File protected from reading", key, securityError);
         }
         return inputStream;
     }
+
+    /**
+     * Deletes file with specific key
+     *
+     * @param key specific file key
+     * @throws IllegalArgumentFileStorageException if key is invalid
+     * @throws ReadWriteFileStorageException
+     * @throws NullArgumentFileStorageException    if key is {@code null}
+     */
 
     @Override
     public void deleteFile(String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException, NullArgumentFileStorageException {
         try {
             final String filePath = this.generatePathPresentation(key);
-            final Path path = Paths.get(filePath + key);
+            final Path path = Paths.get(filePath + "/" + key);
             final long fileSize = (Long) Files.getAttribute(path, "size");
             if (!Files.deleteIfExists(path))
                 throw new IllegalArgumentFileStorageException("This file doesn't exist", key);
@@ -222,15 +237,37 @@ public class FileStorageImpl implements FileStorage {
         }
     }
 
+    /**
+     * Returns free space of storage in bites
+     *
+     * @return free space of storage in bites
+     */
+
     @Override
     public long freeSpaceInBytes() {
-        return this.totalSizeOfFiles;
+        return this.maxDiscSpace - this.totalSizeOfFiles;
     }
+
+    /**
+     * Returns free space of storage in percents
+     *
+     * @return free space of storage in percents
+     */
 
     @Override
     public float freeSpaceInPercents() {
-        return (float) this.totalSizeOfFiles / this.maxDiscSpace * 100;
+        return (float) this.freeSpaceInBytes() / this.maxDiscSpace * 100;
     }
+
+    /**
+     * Liberates free space in the storage to the target value in bites (or more)
+     *
+     * @param discSpaceInBytes target value of the free space
+     * @throws IllegalArgumentFileStorageException  if discSpaceInBytes is invalid
+     * @throws ReadWriteFileStorageException        if no access to some stored files
+     * @throws UnnecessaryEventFileStorageException if target value of the free space less than current free space of storage
+     * @throws NullArgumentFileStorageException     if discSpaceInBytes is {@code null}
+     */
 
     @Override
     public void purge(long discSpaceInBytes) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException, UnnecessaryEventFileStorageException, NullArgumentFileStorageException {
@@ -252,12 +289,22 @@ public class FileStorageImpl implements FileStorage {
         if (sortedByModifyingTimeFiles.isEmpty())
             throw new UnnecessaryEventFileStorageException("There is no files in storage");
 
-        while (this.totalSizeOfFiles > discSpaceInBytes) {
+        while (this.freeSpaceInBytes() < discSpaceInBytes && this.freeSpaceInBytes() > 0) {
             final String key = sortedByModifyingTimeFiles.remove(sortedByModifyingTimeFiles.firstKey());
             this.deleteFile(key);
         }
 
     }
+
+    /**
+     * Liberates free space in the storage to the target value in percents (or more)
+     *
+     * @param discSpaceInPercents target value of the free space
+     * @throws IllegalArgumentFileStorageException  if discSpaceInPercents is invalid
+     * @throws ReadWriteFileStorageException        if no access to some stored files
+     * @throws UnnecessaryEventFileStorageException if target value of the free space less than current free space of storage
+     * @throws NullArgumentFileStorageException     if discSpaceInPercents is {@code null}
+     */
 
     @Override
     public void purge(float discSpaceInPercents) throws ReadWriteFileStorageException, IllegalArgumentFileStorageException, UnnecessaryEventFileStorageException, NullArgumentFileStorageException {
@@ -284,6 +331,12 @@ public class FileStorageImpl implements FileStorage {
         }
     }
 
+    /**
+     * This class runs automatically
+     * and every 1 * 1000 milliseconds finds temporary files
+     * which have to delete and deletes them.
+     */
+
     private final class TempFilesDeleter extends TimerTask {
 
         private final FileStorageImpl fileStorage;
@@ -296,22 +349,24 @@ public class FileStorageImpl implements FileStorage {
         public void run() {
             logger.info("TempFilesDeleter started");
 
-            if (this.fileStorage.tempFiles.isEmpty())
-                return;
+            synchronized (monitor) {
+                if (this.fileStorage.tempFiles.isEmpty())
+                    return;
 
-            Date currentTime = new Date();
-            while (this.fileStorage.tempFiles.firstKey() <= currentTime.getTime())
-                try {
-                    final Long expirationTimeOfFile = this.fileStorage.tempFiles.firstKey();
-                    final String keyOfFileToDelete = this.fileStorage.tempFiles.remove(expirationTimeOfFile);
-                    File fileToDelete = new File(this.fileStorage.generatePathPresentation(keyOfFileToDelete) + "/" + keyOfFileToDelete);
-                    if (fileToDelete.exists()) {
-                        this.fileStorage.deleteFile(keyOfFileToDelete);
+                Date currentTime = new Date();
+                while (this.fileStorage.tempFiles.firstKey() <= currentTime.getTime())
+                    try {
+                        final Long expirationTimeOfFile = this.fileStorage.tempFiles.firstKey();
+                        final String keyOfFileToDelete = this.fileStorage.tempFiles.remove(expirationTimeOfFile);
+                        File fileToDelete = new File(this.fileStorage.generatePathPresentation(keyOfFileToDelete) + "/" + keyOfFileToDelete);
+                        if (fileToDelete.exists()) {
+                            this.fileStorage.deleteFile(keyOfFileToDelete);
+                        }
+                        this.fileStorage.tempFiles.remove(expirationTimeOfFile);
+                    } catch (FileStorageException e) {
+                        e.printStackTrace();
                     }
-                    this.fileStorage.tempFiles.remove(expirationTimeOfFile);
-                } catch (FileStorageException e) {
-                    e.printStackTrace();
-                }
+            }
 
             logger.info("TempFilesDeleter stopped");
         }
@@ -356,25 +411,32 @@ public class FileStorageImpl implements FileStorage {
     private String generatePathPresentation(String key) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException {
 
         this.checkKey(key);
+        // Separates 2^30 (include positive and negative values) variants of hash code
         int cutHash = key.hashCode() % (int) Math.pow(2, 28);
+        // Separates 2^15 (include positive and negative values) variants of hash code for the folders names of the first nesting level
         int fistPartHash = cutHash / (int) Math.pow(2, 14);
+        // Separates 2^15 (include positive and negative values) variants of hash code for the folders names of the second nesting level
         int secondPartHash = cutHash % (int) Math.pow(2, 14);
 
+        // In this structure we can get not more than 2^15 files for each of two nesting level
+        // The total number of files to store: 2^30
         return this.userDataPath + "/" + fistPartHash + "/" + secondPartHash;
     }
 
     private void addNewTempFile(Long expirationTime, String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
         Properties properties = new Properties();
-        for (Long expirationTimeOfCurrentFile : this.tempFiles.keySet()) {
-            if (this.tempFiles.get(expirationTimeOfCurrentFile).equals(key))
-                this.tempFiles.remove(expirationTimeOfCurrentFile);
-            else
-                properties.setProperty(expirationTimeOfCurrentFile.toString(), this.tempFiles.get(expirationTimeOfCurrentFile));
-        }
-        while (this.tempFiles.containsKey(expirationTime))
-            expirationTime++;
+        synchronized (monitor) {
+            for (Long expirationTimeOfCurrentFile : this.tempFiles.keySet()) {
+                if (this.tempFiles.get(expirationTimeOfCurrentFile).equals(key))
+                    this.tempFiles.remove(expirationTimeOfCurrentFile);
+                else
+                    properties.setProperty(expirationTimeOfCurrentFile.toString(), this.tempFiles.get(expirationTimeOfCurrentFile));
+            }
+            while (this.tempFiles.containsKey(expirationTime))
+                expirationTime++;
 
-        this.tempFiles.put(expirationTime, key);
+            this.tempFiles.put(expirationTime, key);
+        }
         properties.setProperty(expirationTime.toString(), key);
         this.saveProperties(properties);
     }
