@@ -7,9 +7,10 @@ package com.teamdev.fileservice.FileStorageImpl;
 
 import com.teamdev.fileservice.FileStorage;
 import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.IllegalArgumentFileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExsistFileStorageException;
 import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.NullArgumentFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.ReadWriteFileStorageException;
 import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.UnnecessaryEventFileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStoragePathServiceImpl.FileStoragePathServiceImpl;
 import org.apache.log4j.Logger;
 
 import java.io.*;
@@ -48,8 +49,10 @@ public class FileStorageImpl implements FileStorage {
      */
 
     public FileStorageImpl(String rootPath, long maxDiscSpace) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException, ReadWriteFileStorageException {
-        checkRootPath(rootPath);
+
+        checkAndCreateFolderPath(rootPath);
         checkMaxDiscSpace(rootPath, maxDiscSpace);
+
         propertiesFilePath = rootPath + "/FileStorage.prop";
         File propertiesFile = new File(propertiesFilePath);
         userDataPath = rootPath + "/userData";
@@ -69,9 +72,10 @@ public class FileStorageImpl implements FileStorage {
             this.totalSizeOfFiles = 0;
 
         this.maxDiscSpace = maxDiscSpace;
-        Timer tempFilesDeleterTimer = new Timer(true);
-        final TempFilesDeleter tempFilesDeleter = new TempFilesDeleter(this);
-        tempFilesDeleterTimer.schedule(tempFilesDeleter, new Date(), 1 * 1000);
+
+        Timer expirationFilesDeleterTimer = new Timer(true);
+        final ExpirationFilesDeleter expirationFilesDeleter = new ExpirationFilesDeleter(this);
+        expirationFilesDeleterTimer.schedule(expirationFilesDeleter, new Date(), 1 * 1000);
 
     }
 
@@ -90,19 +94,14 @@ public class FileStorageImpl implements FileStorage {
 
     @Override
     public void saveFile(String key, InputStream inputStream) throws NullArgumentFileStorageException, IllegalArgumentFileStorageException, ReadWriteFileStorageException {
-        if (inputStream == null)
-            throw new NullArgumentFileStorageException("Input stream expected");
 
-        final String filePath = generatePathPresentation(key);
-        try {
-            checkAndCreateFolderPath(filePath);
-        } catch (IllegalArgumentFileStorageException e) {
-            logger.error("Can't create new folder for the file " + key, e);
-            throw new ReadWriteFileStorageException("Can't create new folder for the file " + key, key, e);
-        }
+        final FileStoragePathService fileStoragePathService = new FileStoragePathServiceImpl();
 
-        File fileToSave = new File(filePath, key);
+        final String filePath = this.userDataPath + fileStoragePathService.generatePathPresentation(key);
+        final String fileName = fileStoragePathService.generateFileNamePresentation(key);
 
+        checkAndCreateFolderPath(filePath);
+        File fileToSave = new File(filePath, fileName);
         saveFileToPath(inputStream, fileToSave, key);
 
         this.totalSizeOfFiles += fileToSave.length();
@@ -122,7 +121,7 @@ public class FileStorageImpl implements FileStorage {
                 output.write(buffer);
                 buffer.compact();
                 if (fileToSave.length() + this.totalSizeOfFiles > maxDiscSpace)
-                    //If true, doesn't delete automatically!
+                    //If true, file won't deletes automatically!
                     throw new IllegalArgumentFileStorageException("No such free disc space to save current file", key);
             }
             buffer.flip();
@@ -142,10 +141,11 @@ public class FileStorageImpl implements FileStorage {
 
     private void checkAndCreateNewFile(File fileToSave, String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
         if (fileToSave.exists())
-            throw new IllegalArgumentFileStorageException("File with key " + key + " already exist", key);
-        else try {
+            throw new KeyAlreadyExsistFileStorageException("Key " + key + " already exist", key);
+
+        try {
             if (!fileToSave.createNewFile())
-                throw new IllegalArgumentFileStorageException("Another thread of FileStorage already creates the file with the same key", key);
+                throw new IllegalArgumentFileStorageException("Can't save file with key " + key, key);
         } catch (IOException iOError) {
             throw new ReadWriteFileStorageException("Can't write new file with key " + key, key, iOError);
         } catch (SecurityException securityError) {
@@ -194,11 +194,14 @@ public class FileStorageImpl implements FileStorage {
     @Override
     public InputStream readFile(String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException, NullArgumentFileStorageException {
 
-        final String filePath = this.generatePathPresentation(key);
+        final FileStoragePathServiceImpl fileStoragePathService = new FileStoragePathServiceImpl();
+
+        final String filePath = this.userDataPath + fileStoragePathService.generatePathPresentation(key);
+        final String fileName = fileStoragePathService.generateFileNamePresentation(key);
         final File file;
         final InputStream inputStream;
         try {
-            file = new File(filePath, key);
+            file = new File(filePath, fileName);
             if (!file.exists())
                 throw new IllegalArgumentFileStorageException("This file doesn't exist", key);
             inputStream = new FileInputStream(file);
@@ -222,9 +225,13 @@ public class FileStorageImpl implements FileStorage {
 
     @Override
     public void deleteFile(String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException, NullArgumentFileStorageException {
+
+        final FileStoragePathServiceImpl fileStoragePathService = new FileStoragePathServiceImpl();
         try {
-            final String filePath = this.generatePathPresentation(key);
-            final Path path = Paths.get(filePath + "/" + key);
+
+            final String filePath = this.userDataPath + fileStoragePathService.generatePathPresentation(key);
+            final String fileName = fileStoragePathService.generateFileNamePresentation(key);
+            final Path path = Paths.get(filePath + fileName);
             final long fileSize = (Long) Files.getAttribute(path, "size");
             if (!Files.deleteIfExists(path))
                 throw new IllegalArgumentFileStorageException("This file doesn't exist", key);
@@ -316,32 +323,17 @@ public class FileStorageImpl implements FileStorage {
         this.purge(targetDiscSpace);
     }
 
-
-    private void checkKey(String key) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException {
-
-        if (key == null) {
-            throw new NullArgumentFileStorageException("Key is null");
-        }
-        for (char currentChar : key.toCharArray()) {
-            switch (currentChar) {
-                case 0x5c:
-                case '/':
-                    throw new IllegalArgumentFileStorageException("File key is invalid", key);
-            }
-        }
-    }
-
     /**
      * This class runs automatically
      * and every 1 * 1000 milliseconds finds temporary files
      * which have to delete and deletes them.
      */
 
-    private final class TempFilesDeleter extends TimerTask {
+    private final class ExpirationFilesDeleter extends TimerTask {
 
         private final FileStorageImpl fileStorage;
 
-        TempFilesDeleter(FileStorageImpl fileStorage) {
+        ExpirationFilesDeleter(FileStorageImpl fileStorage) {
             this.fileStorage = fileStorage;
         }
 
@@ -354,11 +346,19 @@ public class FileStorageImpl implements FileStorage {
                     return;
 
                 Date currentTime = new Date();
+
                 while (this.fileStorage.tempFiles.firstKey() <= currentTime.getTime())
                     try {
                         final Long expirationTimeOfFile = this.fileStorage.tempFiles.firstKey();
                         final String keyOfFileToDelete = this.fileStorage.tempFiles.remove(expirationTimeOfFile);
-                        File fileToDelete = new File(this.fileStorage.generatePathPresentation(keyOfFileToDelete) + "/" + keyOfFileToDelete);
+
+                        final FileStoragePathServiceImpl fileStoragePathService = new FileStoragePathServiceImpl();
+
+                        final String filePath = fileStoragePathService.generatePathPresentation(keyOfFileToDelete);
+                        final String fileName = fileStoragePathService.generateFileNamePresentation(keyOfFileToDelete);
+
+
+                        File fileToDelete = new File(filePath + fileName);
                         if (fileToDelete.exists()) {
                             this.fileStorage.deleteFile(keyOfFileToDelete);
                         }
@@ -372,26 +372,14 @@ public class FileStorageImpl implements FileStorage {
         }
     }
 
-    private void checkRootPath(String rootPath) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException, ReadWriteFileStorageException {
-        if (rootPath == null || rootPath.isEmpty())
-            throw new NullArgumentFileStorageException("Root path expected");
-        checkAndCreateFolderPath(rootPath);
-    }
-
-    private void checkAndCreateFolderPath(String path) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
+    private void checkAndCreateFolderPath(String path) {
         File file = new File(path);
 
-        if (!file.exists()) {
-            try {
-                final boolean directoryCreatesSuccessful = file.mkdirs();
-                if (!directoryCreatesSuccessful)
-                    logger.warn("Another FileStorage thread tries to work with the same path: " + path);
-            } catch (SecurityException e) {
-                throw new ReadWriteFileStorageException("This path read-protected", path, e);
-            }
-        } else if (file.isFile())
-            throw new IllegalArgumentFileStorageException("Specified root path points to a file", path);
+        if (!file.exists())
+            if (!file.mkdirs())
+                logger.warn("Root path already exist! Root path: " + path);
     }
+
 
     private void checkMaxDiscSpace(String rootPath, long maxDiscSpace) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
         if (maxDiscSpace <= 0)
@@ -406,21 +394,6 @@ public class FileStorageImpl implements FileStorage {
         } catch (SecurityException e) {
             throw new ReadWriteFileStorageException("Root path is not accessible", rootPath, e);
         }
-    }
-
-    private String generatePathPresentation(String key) throws IllegalArgumentFileStorageException, NullArgumentFileStorageException {
-
-        this.checkKey(key);
-        // Separates 2^30 (include positive and negative values) variants of hash code
-        int cutHash = key.hashCode() % (int) Math.pow(2, 28);
-        // Separates 2^15 (include positive and negative values) variants of hash code for the folders names of the first nesting level
-        int fistPartHash = cutHash / (int) Math.pow(2, 14);
-        // Separates 2^15 (include positive and negative values) variants of hash code for the folders names of the second nesting level
-        int secondPartHash = cutHash % (int) Math.pow(2, 14);
-
-        // In this structure we can get not more than 2^15 files for each of two nesting level
-        // The total number of files to store: 2^30
-        return this.userDataPath + "/" + fistPartHash + "/" + secondPartHash;
     }
 
     private void addNewTempFile(Long expirationTime, String key) throws IllegalArgumentFileStorageException, ReadWriteFileStorageException {
@@ -476,9 +449,8 @@ public class FileStorageImpl implements FileStorage {
         try {
             Files.walkFileTree(userStoragePath, totalSizeOfFilesCalculatorVisitor);
         } catch (IOException e) {
-            throw new ReadWriteFileStorageException("Can't get access to some stored file", totalSizeOfFilesCalculatorVisitor.getLastAccessedFileKey(), e);
+            throw new ReadWriteFileStorageException("Can't get access to some storage files", totalSizeOfFilesCalculatorVisitor.getLastAccessedFileKey(), e);
         }
-
         return totalSizeOfFilesCalculatorVisitor.getTotalSizeOfFiles();
     }
 
