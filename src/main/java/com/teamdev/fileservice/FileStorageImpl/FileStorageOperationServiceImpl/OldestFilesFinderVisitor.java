@@ -1,4 +1,4 @@
-package com.teamdev.fileservice.FileStorageImpl;
+package com.teamdev.fileservice.FileStorageImpl.FileStorageOperationServiceImpl;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;
@@ -21,11 +21,11 @@ public class OldestFilesFinderVisitor extends SimpleFileVisitor<Path> {
 
     @Override
     public FileVisitResult visitFile(Path path, BasicFileAttributes attrs) throws IOException {
-        final String key = path.getFileName().toString();
-        this.lastAccessedFileKey = key;
+        final String filePath = path.toString();
+        this.lastAccessedFileKey = filePath;
         FileTime fileTime = (FileTime) Files.getAttribute(path, "lastModifiedTime");
         final Long lastModifiedTimeOfFile = fileTime.toMillis();
-        this.oldestFiles.put(lastModifiedTimeOfFile, key);
+        this.oldestFiles.put(lastModifiedTimeOfFile, filePath);
         return FileVisitResult.CONTINUE;
     }
 

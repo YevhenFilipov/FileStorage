@@ -1,25 +1,27 @@
 package com.teamdev.fileservice;
 
-import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
 
 import java.io.InputStream;
 
 public interface FileStorage {
 
-    void saveFile(String key, InputStream inputStream) throws FileStorageException;
+    void saveFile(String key, InputStream inputStream) throws NoFreeSpaceFileStorageException, KeyAlreadyExistFileStorageException;
 
-    void saveFile(String key, InputStream inputStream, long fileLifeTime) throws FileStorageException;
+    void saveFile(String key, InputStream inputStream, long fileLifeTime) throws NoFreeSpaceFileStorageException, KeyAlreadyExistFileStorageException;
 
-    InputStream readFile(String key) throws FileStorageException;
+    InputStream readFile(String key) throws KeyNotExistFileStorageException;
 
-    void deleteFile(String key) throws FileStorageException;
+    void deleteFile(String key) throws KeyNotExistFileStorageException;
 
     long freeSpaceInBytes();
 
     float freeSpaceInPercents();
 
-    void purge(long discSpaceInBytes) throws FileStorageException;
+    void purge(long discSpaceInBytes);
 
-    void purge(float discSpaceInPercents) throws FileStorageException;
+    void purge(float discSpaceInPercents);
 
 }

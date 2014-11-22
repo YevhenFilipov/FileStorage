@@ -1,6 +1,6 @@
 import com.teamdev.fileservice.FileStorage;
 import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.IllegalArgumentFileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
 import com.teamdev.fileservice.FileStorageImpl.FileStorageImpl;
 import org.junit.AfterClass;
 import org.junit.Assert;
@@ -59,7 +59,7 @@ public class TableFileStorageTest {
         fileStorage.deleteFile("9");
         try {
             fileStorage.readFile("9");
-        } catch (IllegalArgumentFileStorageException e) {
+        } catch (KeyNotExistFileStorageException e) {
             Assert.assertTrue("File deleting test", e.getIncorrectArgument().equals("9"));
         }
     }

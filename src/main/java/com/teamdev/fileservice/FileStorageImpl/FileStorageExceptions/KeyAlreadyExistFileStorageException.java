@@ -2,11 +2,11 @@ package com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions;
 
 import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
 
-public class IllegalArgumentFileStorageException extends FileStorageException {
+public class KeyAlreadyExistFileStorageException extends FileStorageException {
 
-    private final String incorrectArgument;
+    private String incorrectArgument;
 
-    public IllegalArgumentFileStorageException(String message, String incorrectArgument) {
+    public KeyAlreadyExistFileStorageException(String message, String incorrectArgument) {
         super(message);
         this.incorrectArgument = incorrectArgument;
     }

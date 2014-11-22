@@ -1,8 +1,8 @@
 package com.teamdev.fileservice.FileStorageImpl;
 
-public interface FileStoragePathService {
+public interface PathService {
 
-    String generatePathPresentation(String key);
+    String generateDirectoryPathPresentation(String key);
 
     String generateFileNamePresentation(String key);
 }

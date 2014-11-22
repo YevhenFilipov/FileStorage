@@ -1,11 +1,11 @@
 package com.teamdev.fileservice.FileStorageImpl.FileStoragePathServiceImpl;
 
-import com.teamdev.fileservice.FileStorageImpl.FileStoragePathService;
+import com.teamdev.fileservice.FileStorageImpl.PathService;
 
-public class FileStoragePathServiceImpl implements FileStoragePathService {
+public class PathServiceImpl implements PathService {
 
     @Override
-    public String generatePathPresentation(String key) {
+    public String generateDirectoryPathPresentation(String key) {
         // Separates 2^30 (include positive and negative values) variants of hash code
         int cutHash = key.hashCode() % (int) Math.pow(2, 28);
         // Separates 2^15 (include positive and negative values) variants of hash code for the folders names of the first nesting level
