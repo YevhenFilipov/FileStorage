@@ -59,7 +59,7 @@ public class FileStorageData {
         return expirationFiles.stringPropertyNames();
     }
 
-    public boolean isFileExpiration(String path) {
+    public boolean isExpirationFile(String path) {
         return expirationFiles.containsKey(path);
     }
 

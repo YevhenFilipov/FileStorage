@@ -160,7 +160,7 @@ public class FileStorageImpl implements FileStorage {
         final long fileSize = operationService.deleteFile(filePath + fileName);
         fileStorageData.decreaseTotalSizeOfFiles(fileSize);
 
-        if (this.fileStorageData.isFileExpiration(filePath + fileName))
+        if (this.fileStorageData.isExpirationFile(filePath + fileName))
             this.fileStorageData.removeExpirationTime(filePath + fileName);
     }
 
