@@ -80,11 +80,10 @@ public class FileStorageImpl implements FileStorage {
         final PathService pathService = new PathServiceImpl();
         final OperationService operationService = new OperationServiceImpl();
 
-        final String filePath = this.userDataPath + pathService.generateDirectoryPathPresentation(key);
-        final String fileName = pathService.generateFileNamePresentation(key);
+        final String filePath = this.userDataPath + pathService.generateFilePathPresentation(key);
 
         try {
-            final long fileSize = operationService.saveFile(filePath + fileName, inputStream, this.freeSpaceInBytes());
+            final long fileSize = operationService.saveFile(filePath, inputStream, this.freeSpaceInBytes());
             fileStorageData.increaseTotalSizeOfFiles(fileSize);
         } catch (KeyAlreadyExistFileStorageException e) {
             throw new KeyAlreadyExistFileStorageException("This key already exist", key);
@@ -110,7 +109,7 @@ public class FileStorageImpl implements FileStorage {
         final PathService pathService = new PathServiceImpl();
         final Date currentTime = new Date();
         final long expirationTime = currentTime.getTime() + fileLifeTime;
-        final String filePath = pathService.generateDirectoryPathPresentation(key) + pathService.generateFileNamePresentation(key);
+        final String filePath = this.userDataPath + pathService.generateFilePathPresentation(key);
 
         this.fileStorageData.putExpirationTime(filePath, expirationTime);
     }
@@ -129,12 +128,11 @@ public class FileStorageImpl implements FileStorage {
         final PathService pathService = new PathServiceImpl();
         final OperationService operationService = new OperationServiceImpl();
 
-        final String filePath = this.userDataPath + pathService.generateDirectoryPathPresentation(key);
-        final String fileName = pathService.generateFileNamePresentation(key);
+        final String filePath = this.userDataPath + pathService.generateFilePathPresentation(key);
 
         final InputStream inputStream;
         try {
-            inputStream = operationService.readFile(filePath + fileName);
+            inputStream = operationService.readFile(filePath);
         } catch (KeyNotExistFileStorageException e) {
             throw new KeyNotExistFileStorageException("This key doesn't exist: " + key, key);
         }
@@ -155,13 +153,12 @@ public class FileStorageImpl implements FileStorage {
         final PathServiceImpl fileStoragePathService = new PathServiceImpl();
         final OperationService operationService = new OperationServiceImpl();
 
-        final String filePath = this.userDataPath + fileStoragePathService.generateDirectoryPathPresentation(key);
-        final String fileName = fileStoragePathService.generateFileNamePresentation(key);
-        final long fileSize = operationService.deleteFile(filePath + fileName);
+        final String filePath = this.userDataPath + fileStoragePathService.generateFilePathPresentation(key);
+        final long fileSize = operationService.deleteFile(filePath);
         fileStorageData.decreaseTotalSizeOfFiles(fileSize);
 
-        if (this.fileStorageData.isExpirationFile(filePath + fileName))
-            this.fileStorageData.removeExpirationTime(filePath + fileName);
+        if (this.fileStorageData.isExpirationFile(filePath))
+            this.fileStorageData.removeExpirationTime(filePath);
     }
 
     /**

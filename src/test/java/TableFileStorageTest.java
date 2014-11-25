@@ -22,11 +22,12 @@ public class TableFileStorageTest {
 
 
     @Test
-    public void SaveReadTest() throws FileStorageException, IOException {
+    public void SaveReadTest() throws FileStorageException, IOException, InterruptedException {
         File referenceFile = new File("src/test/resources/1.txt");
         for (Integer i = 0; i < 10; i++) {
             InputStream inputStream = new BufferedInputStream(new FileInputStream(referenceFile));
             fileStorage.saveFile(i.toString(), inputStream);
+            Thread.sleep(2);
         }
         InputStream inputStream = fileStorage.readFile("9");
         File readFile = new File("target/result.txt");

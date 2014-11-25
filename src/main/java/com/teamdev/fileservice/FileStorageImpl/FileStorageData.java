@@ -38,32 +38,32 @@ public class FileStorageData {
         this.totalSizeOfFiles -= fileSize;
     }
 
-    public void putExpirationTime(String path, long expirationTime) {
+    public synchronized void putExpirationTime(String path, long expirationTime) {
         final Long expirationTimeToLong = expirationTime;
         expirationFiles.setProperty(path, expirationTimeToLong.toString());
         this.storeProperties();
     }
 
-    public long getExpirationTime(String path) {
+    public synchronized long getExpirationTime(String path) {
         final String expirationTimeString = expirationFiles.getProperty(path);
         return Long.parseLong(expirationTimeString);
     }
 
-    public long removeExpirationTime(String path) {
+    public synchronized long removeExpirationTime(String path) {
         final String expirationTimeString = this.expirationFiles.remove(path).toString();
         this.storeProperties();
         return Long.parseLong(expirationTimeString);
     }
 
-    public Set<String> expirationTimeKeySet() {
+    public synchronized Set<String> expirationTimeKeySet() {
         return expirationFiles.stringPropertyNames();
     }
 
-    public boolean isExpirationFile(String path) {
+    public synchronized boolean isExpirationFile(String path) {
         return expirationFiles.containsKey(path);
     }
 
-    private void storeProperties() {
+    private synchronized void storeProperties() {
         File file = new File(propertiesPath);
         try {
             if (!file.exists())
@@ -76,7 +76,7 @@ public class FileStorageData {
 
     }
 
-    private void loadProperties() {
+    private synchronized void loadProperties() {
         File propertiesFile = new File(this.propertiesPath);
         if (propertiesFile.exists()) try {
             expirationFiles.load(new FileReader(propertiesFile));
