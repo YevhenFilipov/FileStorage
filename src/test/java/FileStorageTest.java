@@ -26,24 +26,6 @@ public class FileStorageTest {
 
     }
 
-//    @Before
-//    public void prepareFileToDelete() throws KeyAlreadyExistFileStorageException, NoFreeSpaceFileStorageException, FileNotFoundException {
-//
-//
-//    }
-//
-//    @Before
-//
-//    public void prepareExpirationFile() throws InterruptedException, KeyAlreadyExistFileStorageException, NoFreeSpaceFileStorageException, FileNotFoundException {
-//        File referenceFile = new File("src/test/resources/1.txt");
-//        InputStream inputStream = new BufferedInputStream(new FileInputStream(referenceFile));
-//        final String key = "expirationFile";
-//        fileStorage.saveFile(key, inputStream, 1 * 1000l);
-//
-//        Thread.sleep(3 * 1000l);
-//    }
-
-
     @Test
     public void SaveReadTest() throws FileStorageException, IOException, InterruptedException {
         File referenceFile = new File("src/test/resources/1.txt");

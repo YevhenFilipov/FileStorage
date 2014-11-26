@@ -2,7 +2,8 @@ package com.teamdev.fileservice.FileStorageImpl;
 /**
  * This class creates specific structure of subdirectories to save 2^30 files.
  * File structure building bases on hash code of the specific key of each file.
- * Class have tread-safe public methods
+ *
+ * @author Yevhen Filipov
  */
 
 import com.teamdev.fileservice.FileStorage;
@@ -66,12 +67,11 @@ public class FileStorageImpl implements FileStorage {
     /**
      * Saves the new file with specific key to the storage
      *
-     * @param key         Unique key of file.
-     *                    Key mustn't contains symbols:
-     *                    '\'
-     *                    '/'
+     * @param key         unique key of file.
      * @param inputStream input stream for this file
-     * @throws ReadWriteFileStorageException if root path is read-protected
+     * @throws NoFreeSpaceFileStorageException                                       if there no free space in the storage
+     * @throws KeyAlreadyExistFileStorageException                                   if file, associated with this key already exist
+     * @throws com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
      */
 
     @Override
@@ -91,15 +91,14 @@ public class FileStorageImpl implements FileStorage {
     }
 
     /**
-     * Saves the new temporary file with specific key to the storage. This file will be deletes automatically after fileLifeTime.
+     * Saves the new expiration file with specific key to the storage. This file will be deletes automatically after fileLifeTime.
      *
-     * @param key          Unique key of file.
-     *                     Key mustn't contains symbols:
-     *                     '\'
-     *                     '/'
+     * @param key          unique key of file.
      * @param inputStream  input stream for this file
      * @param fileLifeTime expiration time of the file. After this time it'll be deletes automatically
-     * @throws ReadWriteFileStorageException if root path is read-protected
+     * @throws NoFreeSpaceFileStorageException                                       if there no free space in the storage
+     * @throws KeyAlreadyExistFileStorageException                                   if file, associated with this key already exist
+     * @throws com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
      */
 
     @Override
@@ -117,9 +116,10 @@ public class FileStorageImpl implements FileStorage {
     /**
      * Reads file from the storage
      *
-     * @param key specified file key
-     * @return Input Stream
-     * @throws ReadWriteFileStorageException if file doesn't exist, or file protected from reading.
+     * @param key specific file key
+     * @return Input Stream of this file
+     * @throws KeyNotExistFileStorageException                                       if the file, associated with this key doesn't exist
+     * @throws com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
      */
 
     @Override
@@ -144,7 +144,8 @@ public class FileStorageImpl implements FileStorage {
      * Deletes file with specific key
      *
      * @param key specific file key
-     * @throws ReadWriteFileStorageException
+     * @throws KeyNotExistFileStorageException                                       if the file, associated with this key doesn't exist
+     * @throws com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
      */
 
     @Override
@@ -175,7 +176,7 @@ public class FileStorageImpl implements FileStorage {
     /**
      * Returns free space of storage in percents
      *
-     * @return free space of storage in percents
+     * @return free space of storage in percents (0..100%)
      */
 
     @Override
@@ -187,7 +188,6 @@ public class FileStorageImpl implements FileStorage {
      * Liberates free space in the storage to the target value in bites (or more)
      *
      * @param discSpaceInBytes target value of the free space
-     * @throws ReadWriteFileStorageException if no access to some stored files
      */
 
     @Override
@@ -207,7 +207,7 @@ public class FileStorageImpl implements FileStorage {
     /**
      * Liberates free space in the storage to the target value in percents (or more)
      *
-     * @param discSpaceInPercents target value of the free space
+     * @param discSpaceInPercents target value of the free space (0..100%)
      * @throws ReadWriteFileStorageException if no access to some stored files
      */
 
