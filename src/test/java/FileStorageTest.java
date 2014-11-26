@@ -4,21 +4,44 @@ import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExist
 import com.teamdev.fileservice.FileStorageImpl.FileStorageImpl;
 import org.junit.AfterClass;
 import org.junit.Assert;
-import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 
 import java.io.*;
 import java.nio.file.*;
 import java.nio.file.attribute.BasicFileAttributes;
 
-public class TableFileStorageTest {
+public class FileStorageTest {
 
-    FileStorage fileStorage;
+    static FileStorage fileStorage;
 
-    @Before
-    public void init() throws FileStorageException {
-        fileStorage = new FileStorageImpl("target/testRoot/", 100l);
+    @BeforeClass
+    public static void init() throws FileStorageException, FileNotFoundException, InterruptedException {
+        fileStorage = new FileStorageImpl("target/testRoot", 120l);
+
+        File referenceFile = new File("src/test/resources/1.txt");
+        InputStream inputStream = new BufferedInputStream(new FileInputStream(referenceFile));
+        fileStorage.saveFile("KillMe", inputStream);
+
+
     }
+
+//    @Before
+//    public void prepareFileToDelete() throws KeyAlreadyExistFileStorageException, NoFreeSpaceFileStorageException, FileNotFoundException {
+//
+//
+//    }
+//
+//    @Before
+//
+//    public void prepareExpirationFile() throws InterruptedException, KeyAlreadyExistFileStorageException, NoFreeSpaceFileStorageException, FileNotFoundException {
+//        File referenceFile = new File("src/test/resources/1.txt");
+//        InputStream inputStream = new BufferedInputStream(new FileInputStream(referenceFile));
+//        final String key = "expirationFile";
+//        fileStorage.saveFile(key, inputStream, 1 * 1000l);
+//
+//        Thread.sleep(3 * 1000l);
+//    }
 
 
     @Test
@@ -27,7 +50,6 @@ public class TableFileStorageTest {
         for (Integer i = 0; i < 10; i++) {
             InputStream inputStream = new BufferedInputStream(new FileInputStream(referenceFile));
             fileStorage.saveFile(i.toString(), inputStream);
-            Thread.sleep(2);
         }
         InputStream inputStream = fileStorage.readFile("9");
         File readFile = new File("target/result.txt");
@@ -49,29 +71,15 @@ public class TableFileStorageTest {
     }
 
     @Test
-    public void freeSpaceTest() throws FileStorageException {
-        Assert.assertTrue("Free space test", fileStorage.freeSpaceInBytes() == (100l - 90l));
-    }
-
-    @Test
 
     public void deleteFileTest() throws FileStorageException {
 
-        fileStorage.deleteFile("9");
+        fileStorage.deleteFile("KillMe");
         try {
-            fileStorage.readFile("9");
+            fileStorage.readFile("KillMe");
         } catch (KeyNotExistFileStorageException e) {
-            Assert.assertTrue("File deleting test", e.getIncorrectArgument().equals("9"));
+            Assert.assertTrue("File deleting test", true);
         }
-    }
-
-    @Test
-    public void purgeTest() throws FileStorageException {
-        long currentFreeSpace = fileStorage.freeSpaceInBytes();
-        long targetFreeSpace = currentFreeSpace + 10;
-        fileStorage.purge(targetFreeSpace);
-        boolean result = fileStorage.freeSpaceInBytes() > targetFreeSpace && fileStorage.freeSpaceInBytes() > 0;
-        Assert.assertTrue("Purge Test", result);
     }
 
     @AfterClass
@@ -95,7 +103,7 @@ public class TableFileStorageTest {
             }
         }
 
-        Path testFilesPath = Paths.get("target/testRoot");
+        Path testFilesPath = Paths.get("target/testRoot/userData");
         Files.walkFileTree(testFilesPath, new DeleteTestFilesVisitor());
 
     }

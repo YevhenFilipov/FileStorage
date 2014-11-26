@@ -29,13 +29,14 @@ public class ExpirationFilesDeleter extends TimerTask {
             final Long expirationTimeOfFile = this.fileStorageData.getExpirationTime(filePath);
 
             if (expirationTimeOfFile <= currentTime.getTime()) {
-                this.fileStorageData.removeExpirationTime(filePath);
-
                 try {
                     final long fileSize = operationService.deleteFile(filePath);
                     this.fileStorageData.decreaseTotalSizeOfFiles(fileSize);
+                    this.fileStorageData.removeExpirationTime(filePath);
                 } catch (KeyNotExistFileStorageException e) {
                     LOGGER.info("This file not found: " + filePath, e);
+                } catch (ReadWriteFileStorageException readWriteError) {
+                    LOGGER.info("Can't delete this file: " + filePath, readWriteError);
                 }
             }
         }

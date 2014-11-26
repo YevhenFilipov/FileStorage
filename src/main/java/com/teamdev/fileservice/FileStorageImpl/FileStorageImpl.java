@@ -59,7 +59,7 @@ public class FileStorageImpl implements FileStorage {
 
         Timer expirationFilesDeleterTimer = new Timer(true);
         final ExpirationFilesDeleter expirationFilesDeleter = new ExpirationFilesDeleter(this.fileStorageData);
-        expirationFilesDeleterTimer.schedule(expirationFilesDeleter, new Date(), 1 * 1000);
+        expirationFilesDeleterTimer.schedule(expirationFilesDeleter, new Date(), 1 * 1000l);
 
     }
 
@@ -179,8 +179,8 @@ public class FileStorageImpl implements FileStorage {
      */
 
     @Override
-    public float freeSpaceInPercents() {
-        return (float) this.freeSpaceInBytes() / this.maxDiscSpace * 100;
+    public int freeSpaceInPercents() {
+        return (int) (this.freeSpaceInBytes() / this.maxDiscSpace * 100);
     }
 
     /**
@@ -212,9 +212,9 @@ public class FileStorageImpl implements FileStorage {
      */
 
     @Override
-    public void purge(float discSpaceInPercents) {
+    public void purge(int discSpaceInPercents) {
 
-        long targetDiscSpace = (long) discSpaceInPercents * this.maxDiscSpace / 100;
+        long targetDiscSpace = discSpaceInPercents * this.maxDiscSpace / 100;
         this.purge(targetDiscSpace);
     }
 

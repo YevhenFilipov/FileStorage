@@ -18,10 +18,10 @@ public interface FileStorage {
 
     long freeSpaceInBytes();
 
-    float freeSpaceInPercents();
+    int freeSpaceInPercents();
 
     void purge(long discSpaceInBytes);
 
-    void purge(float discSpaceInPercents);
+    void purge(int discSpaceInPercents);
 
 }

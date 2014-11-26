@@ -63,8 +63,8 @@ public class FileStorageData {
         return expirationFiles.containsKey(path);
     }
 
-    private synchronized void storeProperties() {
-        File file = new File(propertiesPath);
+    private void storeProperties() {
+        final File file = new File(propertiesPath);
         try {
             if (!file.exists())
                 if (!file.createNewFile())
@@ -76,8 +76,8 @@ public class FileStorageData {
 
     }
 
-    private synchronized void loadProperties() {
-        File propertiesFile = new File(this.propertiesPath);
+    private void loadProperties() {
+        final File propertiesFile = new File(this.propertiesPath);
         if (propertiesFile.exists()) try {
             expirationFiles.load(new FileReader(propertiesFile));
         } catch (IOException e) {

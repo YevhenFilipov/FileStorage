@@ -81,12 +81,20 @@ public class OperationServiceImpl implements OperationService {
     @Override
     public long deleteFile(String filePath) throws KeyNotExistFileStorageException {
 
-        final File file = new File(filePath);
-        final long fileSize;
-            fileSize = file.length();
-            if (!file.delete())
-                throw new KeyNotExistFileStorageException("This file doesn't exist", file.getAbsolutePath());
+        Path file = Paths.get(filePath);
+        long fileSize;
+        if (!Files.exists(file))
+            throw new KeyNotExistFileStorageException("This key doesn't exist", filePath);
+        try {
+            fileSize = (Long) Files.getAttribute(file, "size");
+            Files.deleteIfExists(file);
+        } catch (IOException e) {
+            throw new ReadWriteFileStorageException("Can't delete this file", filePath, e);
+        }
+
         return fileSize;
+
+
     }
 
     @Override

@@ -1,0 +1,66 @@
+import com.teamdev.fileservice.FileStorage;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageImpl;
+import org.junit.*;
+
+import java.io.*;
+import java.nio.file.*;
+import java.nio.file.attribute.BasicFileAttributes;
+
+public class FileStoragePurgeTest {
+
+    static FileStorage fileStorage;
+
+    @BeforeClass
+    public static void init() throws FileStorageException {
+        fileStorage = new FileStorageImpl("target/testRoot", 120l);
+    }
+
+    @Before
+    public void prepareFiles() throws KeyAlreadyExistFileStorageException, NoFreeSpaceFileStorageException, FileNotFoundException {
+        File referenceFile = new File("src/test/resources/1.txt");
+        for (Integer i = 0; i < 10; i++) {
+            InputStream inputStream = new BufferedInputStream(new FileInputStream(referenceFile));
+            fileStorage.saveFile(i.toString(), inputStream);
+        }
+    }
+
+    @Test
+    public void purgeTest() throws FileStorageException {
+        long currentFreeSpace = fileStorage.freeSpaceInBytes();
+        long targetFreeSpace = currentFreeSpace + 10;
+        fileStorage.purge(targetFreeSpace);
+        boolean result = fileStorage.freeSpaceInBytes() >= targetFreeSpace;
+        Assert.assertTrue("Purge Test", result);
+    }
+
+    @AfterClass
+    public static void cleanAll() throws IOException {
+        deleteTestFiles();
+    }
+
+    private static void deleteTestFiles() throws IOException {
+
+        class DeleteTestFilesVisitor extends SimpleFileVisitor<Path> {
+            @Override
+            public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) throws IOException {
+                Files.deleteIfExists(file);
+                return FileVisitResult.CONTINUE;
+            }
+
+            @Override
+            public FileVisitResult postVisitDirectory(Path dir, IOException exc) throws IOException {
+                Files.deleteIfExists(dir);
+                return FileVisitResult.CONTINUE;
+            }
+        }
+
+        Path testFilesPath = Paths.get("target/testRoot/userData");
+        Files.walkFileTree(testFilesPath, new DeleteTestFilesVisitor());
+
+    }
+
+
+}
