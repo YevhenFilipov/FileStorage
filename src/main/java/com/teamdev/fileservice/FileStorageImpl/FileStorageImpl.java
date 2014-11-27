@@ -7,6 +7,7 @@ package com.teamdev.fileservice.FileStorageImpl;
  */
 
 import com.teamdev.fileservice.FileStorage;
+import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.IncorrectArgumentFileStorageException;
 import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
 import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
 import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
@@ -49,11 +50,11 @@ public class FileStorageImpl implements FileStorage {
 
         final long rootPathFreeSpace = operationService.getFreeSpace(rootPath);
 
-        if (maxDiscSpace < 0)
-            maxDiscSpace = 0;
+        if (maxDiscSpace <= 0)
+            throw new IncorrectArgumentFileStorageException("Value of maxDiscSpace <= 0");
 
         if (rootPathFreeSpace < maxDiscSpace)
-            LOGGER.error("FileStorage tries to receive " + maxDiscSpace +
+            LOGGER.warn("FileStorage tries to receive " + maxDiscSpace +
                     " bites on disc, but only " + rootPathFreeSpace + " bites are available!");
 
         this.maxDiscSpace = maxDiscSpace;
@@ -104,6 +105,8 @@ public class FileStorageImpl implements FileStorage {
     @Override
     public void saveFile(String key, InputStream inputStream, long fileLifeTime) throws NoFreeSpaceFileStorageException, KeyAlreadyExistFileStorageException {
 
+        if (fileLifeTime <= 0)
+            throw new IncorrectArgumentFileStorageException("Value of fileLifeTime <= 0");
         this.saveFile(key, inputStream);
         final PathService pathService = new PathServiceImpl();
         final Date currentTime = new Date();
@@ -194,7 +197,7 @@ public class FileStorageImpl implements FileStorage {
     public void purge(long discSpaceInBytes) {
 
         if (discSpaceInBytes <= 0)
-            return;
+            throw new IncorrectArgumentFileStorageException("Value of discSpaceInBytes <= 0");
         if (discSpaceInBytes > this.maxDiscSpace)
             discSpaceInBytes = this.maxDiscSpace;
 
@@ -213,6 +216,9 @@ public class FileStorageImpl implements FileStorage {
 
     @Override
     public void purge(int discSpaceInPercents) {
+
+        if (discSpaceInPercents <= 0 || discSpaceInPercents > 100)
+            throw new IncorrectArgumentFileStorageException("Value of discSpaceInPercents <= 0 or > 100");
 
         long targetDiscSpace = discSpaceInPercents * this.maxDiscSpace / 100;
         this.purge(targetDiscSpace);
