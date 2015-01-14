@@ -1,4 +1,4 @@
-package com.teamdev.fileservice.FileStorageImpl;
+package com.filipov.fileservice.FileStorageImpl;
 
 public class FileStorageException extends Exception {
 

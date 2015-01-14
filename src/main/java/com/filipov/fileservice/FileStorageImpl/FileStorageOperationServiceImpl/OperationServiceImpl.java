@@ -1,10 +1,10 @@
-package com.teamdev.fileservice.FileStorageImpl.FileStorageOperationServiceImpl;
+package com.filipov.fileservice.FileStorageImpl.FileStorageOperationServiceImpl;
 
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.OperationService;
-import com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.OperationService;
+import com.filipov.fileservice.FileStorageImpl.ReadWriteFileStorageException;
 
 import java.io.*;
 import java.nio.ByteBuffer;

@@ -1,4 +1,4 @@
-package com.teamdev.fileservice.FileStorageImpl.FileStorageOperationServiceImpl;
+package com.filipov.fileservice.FileStorageImpl.FileStorageOperationServiceImpl;
 
 import java.io.IOException;
 import java.nio.file.FileVisitResult;

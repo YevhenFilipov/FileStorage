@@ -1,4 +1,4 @@
-package com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions;
+package com.filipov.fileservice.FileStorageImpl.FileStorageExceptions;
 
 public class IncorrectArgumentFileStorageException extends RuntimeException {
     public IncorrectArgumentFileStorageException(String message) {

@@ -1,6 +1,6 @@
-import com.teamdev.fileservice.FileStorage;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageImpl;
+import com.filipov.fileservice.FileStorage;
+import com.filipov.fileservice.FileStorageImpl.FileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageImpl;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;

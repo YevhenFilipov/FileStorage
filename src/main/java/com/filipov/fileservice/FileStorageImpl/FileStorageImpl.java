@@ -1,4 +1,4 @@
-package com.teamdev.fileservice.FileStorageImpl;
+package com.filipov.fileservice.FileStorageImpl;
 /**
  * This class creates specific structure of subdirectories to save 2^30 files.
  * File structure building bases on hash code of the specific key of each file.
@@ -6,13 +6,13 @@ package com.teamdev.fileservice.FileStorageImpl;
  * @author Yevhen Filipov
  */
 
-import com.teamdev.fileservice.FileStorage;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.IncorrectArgumentFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageOperationServiceImpl.OperationServiceImpl;
-import com.teamdev.fileservice.FileStorageImpl.FileStoragePathServiceImpl.PathServiceImpl;
+import com.filipov.fileservice.FileStorage;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.IncorrectArgumentFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageOperationServiceImpl.OperationServiceImpl;
+import com.filipov.fileservice.FileStorageImpl.FileStoragePathServiceImpl.PathServiceImpl;
 import org.apache.log4j.Logger;
 
 import java.io.InputStream;
@@ -72,7 +72,7 @@ public class FileStorageImpl implements FileStorage {
      * @param inputStream input stream for this file
      * @throws NoFreeSpaceFileStorageException                                       if there no free space in the storage
      * @throws KeyAlreadyExistFileStorageException                                   if file, associated with this key already exist
-     * @throws com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
+     * @throws com.filipov.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
      */
 
     @Override
@@ -99,7 +99,7 @@ public class FileStorageImpl implements FileStorage {
      * @param fileLifeTime expiration time of the file. After this time it'll be deletes automatically
      * @throws NoFreeSpaceFileStorageException                                       if there no free space in the storage
      * @throws KeyAlreadyExistFileStorageException                                   if file, associated with this key already exist
-     * @throws com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
+     * @throws com.filipov.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
      */
 
     @Override
@@ -122,7 +122,7 @@ public class FileStorageImpl implements FileStorage {
      * @param key specific file key
      * @return Input Stream of this file
      * @throws KeyNotExistFileStorageException                                       if the file, associated with this key doesn't exist
-     * @throws com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
+     * @throws com.filipov.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
      */
 
     @Override
@@ -148,7 +148,7 @@ public class FileStorageImpl implements FileStorage {
      *
      * @param key specific file key
      * @throws KeyNotExistFileStorageException                                       if the file, associated with this key doesn't exist
-     * @throws com.teamdev.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
+     * @throws com.filipov.fileservice.FileStorageImpl.ReadWriteFileStorageException if IOException occurs
      */
 
     @Override

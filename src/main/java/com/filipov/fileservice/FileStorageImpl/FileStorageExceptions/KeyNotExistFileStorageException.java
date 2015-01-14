@@ -1,6 +1,6 @@
-package com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions;
+package com.filipov.fileservice.FileStorageImpl.FileStorageExceptions;
 
-import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageException;
 
 public class KeyNotExistFileStorageException extends FileStorageException {
 

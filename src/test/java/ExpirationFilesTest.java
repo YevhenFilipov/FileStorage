@@ -1,9 +1,9 @@
-import com.teamdev.fileservice.FileStorage;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
-import com.teamdev.fileservice.FileStorageImpl.FileStorageImpl;
+import com.filipov.fileservice.FileStorage;
+import com.filipov.fileservice.FileStorageImpl.FileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.KeyAlreadyExistFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.KeyNotExistFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageExceptions.NoFreeSpaceFileStorageException;
+import com.filipov.fileservice.FileStorageImpl.FileStorageImpl;
 import org.junit.*;
 
 import java.io.*;

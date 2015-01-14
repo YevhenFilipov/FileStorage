@@ -1,6 +1,6 @@
-package com.teamdev.fileservice.FileStorageImpl;
+package com.filipov.fileservice.FileStorageImpl;
 
-import com.teamdev.fileservice.FileStorageImpl.FileStorageOperationServiceImpl.OperationServiceImpl;
+import com.filipov.fileservice.FileStorageImpl.FileStorageOperationServiceImpl.OperationServiceImpl;
 import org.apache.log4j.Logger;
 
 import java.io.File;

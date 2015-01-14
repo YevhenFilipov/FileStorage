@@ -1,4 +1,4 @@
-package com.teamdev.fileservice.FileStorageImpl;
+package com.filipov.fileservice.FileStorageImpl;
 
 public class ReadWriteFileStorageException extends RuntimeException {
 

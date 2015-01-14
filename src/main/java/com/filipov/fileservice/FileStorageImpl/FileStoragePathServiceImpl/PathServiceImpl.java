@@ -1,6 +1,6 @@
-package com.teamdev.fileservice.FileStorageImpl.FileStoragePathServiceImpl;
+package com.filipov.fileservice.FileStorageImpl.FileStoragePathServiceImpl;
 
-import com.teamdev.fileservice.FileStorageImpl.PathService;
+import com.filipov.fileservice.FileStorageImpl.PathService;
 
 public class PathServiceImpl implements PathService {
 
